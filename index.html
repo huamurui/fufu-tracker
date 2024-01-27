@@ -24,6 +24,13 @@
 
       btn.onclick = function () {
         history.pushState({}, "", "/a");
+        tr.pushEvent({
+          type: "ko no fufu da",
+          target: "btn",
+          action: "click",
+          time: Date.now(),
+        });
+        tr.send();
       };
     </script>
   </body>

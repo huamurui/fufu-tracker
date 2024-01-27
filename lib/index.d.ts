@@ -4,6 +4,17 @@ interface BaseConfig {
     reportUrl: string;
     eventsTobeRecord: EventType[];
     userId?: string | (() => string);
+    stayTime?: number;
+}
+interface EventData {
+    type?: EventType;
+    time?: Date | number;
+    device?: string;
+    userId?: string;
+    pageUrl?: string;
+    requestUrl?: string;
+    extra?: Record<string, unknown>;
+    data?: Record<string, unknown>;
 }
 declare class FufuTracker {
     private baseInfo;
@@ -13,6 +24,7 @@ declare class FufuTracker {
     constructor(config: BaseConfig);
     installConfig(): void;
     listenPage(): void;
+    pushEvent(event: EventData): void;
     json2Blob(data: {
         [key: string]: unknown;
     }): Blob;

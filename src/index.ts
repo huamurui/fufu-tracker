@@ -1,13 +1,4 @@
-const sdkVersion: string = '0.0.0'
-
-// enum EventTypeEnum {
-//   ACTION_CLICK = 'action_click',
-//   ACTION_SCROLL = 'action_scroll',
-//   ACTION_ROUTE = 'action_route',
-//   ERROR = 'error',
-//   PERFORMANCE = 'performance',
-//   REQUEST = 'request',
-// }
+const sdkVersion: string = '0.0.2'
 
 type EventType = 'action_click' | 'action_scroll' | 'action_route' | 'error' | 'performance' | 'request'
 
@@ -16,6 +7,7 @@ interface BaseConfig {
   reportUrl: string
   eventsTobeRecord: EventType[]
   userId?: string | (() => string)
+  stayTime?: number
 }
 
 interface EventData {
@@ -79,21 +71,27 @@ export default class FufuTracker {
   // https://developer.chrome.com/docs/web-platform/page-lifecycle-api#developer-recommendations-for-each-state
   // https://github.com/GoogleChromeLabs/page-lifecycle
   listenPage() {
-    window?.addEventListener('visibilitychange', () => {
+    window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
+        this.baseInfo.stayTime = new Date().getTime() - (this.baseInfo.startTime as number)
         this.send()
       } else {
         this.baseInfo.startTime = new Date().getTime()
-        this.timer = window.setInterval(() => {
-          this.send()
-        }, 1000)
       }
     })
 
     // 页面关闭，页面刷新，页面跳转，切换，'beforeunload' ,'hashchange' , 或者时间到了，都会触发这个事件。时间的话...大概是每一次send之后会重置一个东西，到达阈值就会自动发一下。
-    window?.addEventListener('beforeunload', () => {
+    // 问题是你现在把停留时间和其他事件的上报绑定了... 这部分直接放进 baseInfo 里确实看起来挺方便... 但另一些就不好做了...
+    // 想一下用户一直在上面点点点但就是不离开... 还是要有一个限制，阈值，比如 event 数量到达一定程度就要发一次，或者时间到了就要发一次。
+    // 不过这个问题...现在可能也没那么重要，先放着吧。或者，普通事件随便发，但对通过 visibilitychange 触发的发送，搞些特殊。嗯，已经有特殊了，
+    window.addEventListener('beforeunload', () => {
       this.send()
     })
+  }
+
+  // 自定义事件 push 进入 events 数组
+  pushEvent(event: EventData) {
+    this.events.push(event)
   }
 
   json2Blob(data: { [key: string]: unknown }) {
@@ -112,9 +110,7 @@ export default class FufuTracker {
     const blob = this.json2Blob(data)
     navigator.sendBeacon(this.baseInfo.reportUrl, blob)
     this.events = []
-    this.timer && window.clearInterval(this.timer)
   }
-
 
   /**
    * below are the tracker functions
@@ -135,7 +131,6 @@ export default class FufuTracker {
     })
   }
 
-
   captureScroll() {
     const scroll = {
       lastScrollTop: 0,
@@ -147,7 +142,7 @@ export default class FufuTracker {
     return function () {
       scroll.scrollTop = document.documentElement.scrollTop
       scroll.scrollTime = new Date().getTime()
-      if (scroll.scrollTime - scroll.lastScrollTime > 20000) {
+      if (scroll.scrollTime - scroll.lastScrollTime > 1000) {
         scroll.lastScrollTime = scroll.scrollTime
       }
       that.events.push({
@@ -161,6 +156,7 @@ export default class FufuTracker {
         }
       })
       scroll.lastScrollTop = scroll.scrollTop
+      scroll.lastScrollTime = scroll.scrollTime
     }
   }
 
