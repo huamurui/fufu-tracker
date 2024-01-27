@@ -117,12 +117,14 @@ export default class FufuTracker {
    */
 
   captureClick(e: MouseEvent) {
+    const target = e.target as HTMLElement;
     this.events.push({
       type: 'action_click',
       time: new Date().getTime(),
       pageUrl: window.location.href,
       data: {
-        targetKey: e?.target,
+        // dom 以及 react dom 的结构存在循环引用...，只存一下 id 什么的吧
+        target: target?.id || target?.className || target?.tagName || 'null',
         x: e.clientX,
         y: e.clientY,
         width: window.innerWidth,
