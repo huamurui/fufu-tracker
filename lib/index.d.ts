@@ -1,25 +1,27 @@
+type EventType = 'action_click' | 'action_scroll' | 'action_route' | 'error' | 'performance' | 'request';
 interface BaseConfig {
     appId: string;
-    baseUrl: string;
-    eventTobeRecord: string[];
+    reportUrl: string;
+    eventsTobeRecord: EventType[];
+    userId?: string | (() => string);
 }
 declare class FufuTracker {
     private baseInfo;
+    private eventsTobeRecord;
     private events;
-    private pageUrl;
-    private userId;
-    private startTime;
-    private endTime;
-    private extra;
-    private eventTobeRecord;
+    private timer;
     constructor(config: BaseConfig);
     installConfig(): void;
-    captureEvents<T>(MouseEventList: string[], targetKey: string, data?: T): void;
     listenPage(): void;
     json2Blob(data: {
         [key: string]: unknown;
     }): Blob;
     send(): void;
+    /**
+     * below are the tracker functions
+     */
+    captureClick(e: MouseEvent): void;
+    captureScroll(): () => void;
 }
 
 export { FufuTracker as default };

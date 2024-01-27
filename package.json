@@ -1,10 +1,22 @@
 {
   "name": "fufu-tracker",
   "version": "0.0.1",
-  "description": "",
+  "description": "a simple web tracker",
+  "author": "huamurui",
+  "homepage": "https://github.com/huamurui/fufu-tracker.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/huamurui/fufu-tracker"
+  },
+  "keywords": [
+    "tracker",
+    "web",
+    "furina"
+  ],
   "type": "module",
   "main": "lib/index.js",
   "module": "lib/index.esm.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rollup -c"
@@ -12,9 +24,8 @@
   "files": [
     "lib"
   ],
-  "author": "huamurui",
   "license": "MIT",
-  "dependencies": {
+  "devDependencies": {
     "rollup": "^4.9.6",
     "rollup-plugin-dts": "^6.1.0",
     "rollup-plugin-typescript2": "^0.36.0",

@@ -1,14 +1,26 @@
 const sdkVersion: string = '0.0.0'
 
+// enum EventTypeEnum {
+//   ACTION_CLICK = 'action_click',
+//   ACTION_SCROLL = 'action_scroll',
+//   ACTION_ROUTE = 'action_route',
+//   ERROR = 'error',
+//   PERFORMANCE = 'performance',
+//   REQUEST = 'request',
+// }
+
+type EventType = 'action_click' | 'action_scroll' | 'action_route' | 'error' | 'performance' | 'request'
+
 interface BaseConfig {
   appId: string
-  baseUrl: string
-  eventTobeRecord: string[] // 确认需要记录哪些事件
+  reportUrl: string
+  eventsTobeRecord: EventType[]
+  userId?: string | (() => string)
 }
 
-// 要记录的信息的类型和数据...
 interface EventData {
-  type?: string
+  type?: EventType
+  time?: Date | number
   device?: string
   userId?: string
   pageUrl?: string
@@ -17,117 +29,51 @@ interface EventData {
   data?: Record<string, unknown>
 }
 
-const example = {
-  baseInfo: {
-    appId: '123123',
-    baseUrl: '123123',
-    sdkVersion: '1.0.0',
-
-    userId: '123123',
-    // 这个本身就是一个事件...代表着某种pageStay什么的...
-    startTime: 123123123,
-    endTime: 123123123,
-  },
-  events: [
-    {
-      time: 123123123,
-      type: 'action_click',
-      pageUrl: 'pageUrl',
-      data: {
-        targetKey: 'targetKey',
-        x: 123,
-        y: 123,
-        width: 123,
-        height: 123,
-      }
-    },
-    {
-      time: 123123123,
-      type: 'action_scroll',
-      pageUrl: 'pageUrl',
-      data: {
-        scrollTop: 123,
-      }
-    },
-    {
-      type: 'action_route',
-      time: 123123123,
-      pageUrl: 'pageUrl',
-      data: {
-        from: 'from',
-        to: 'to',
-      }
-    },
-    {
-      type: 'error',
-      time: 123123123,
-      pageUrl: 'pageUrl',
-      data: {
-        message: 'message',
-      }
-    },
-    {
-      type: 'performance',
-      time: 123123123,
-      pageUrl: 'pageUrl',
-      data: {
-        loadPage: 123,
-        domReady: 123,
-        redirect: 123,
-      }
-    },
-    {
-      type: 'request',
-      time: 123123123,
-      pageUrl: 'pageUrl',
-      data: {
-        requestUrl: 'requestUrl',
-      }
-    }
-  ],
-}
-
-
 export default class FufuTracker {
-  private baseInfo: BaseConfig
+  private baseInfo: BaseConfig & {
+    startTime?: number
+    endTime?: number
+    sdkVersion?: string
+  }
+  private eventsTobeRecord: EventType[] = []
   private events: EventData[] = []
-  private pageUrl: string = ''
-  private userId: string = ''
-  private startTime: number = 0
-  private endTime: number = 0
-  private extra: Record<string, unknown> = {}
-  private eventTobeRecord: string[] = []
+  private timer: number | null = null
 
   constructor(config: BaseConfig) {
     this.baseInfo = config
-    this.pageUrl = window.location.href
-    this.eventTobeRecord = config.eventTobeRecord
-    this.startTime = new Date().getTime()
+    this.eventsTobeRecord = config.eventsTobeRecord
+    this.baseInfo.startTime = new Date().getTime()
     this.installConfig()
     this.listenPage()
   }
 
   installConfig() {
-    this.userId = this.baseInfo.appId
-    this.extra = {
-      sdkVersion: sdkVersion,
-      device: ''
-    }
-    this.captureEvents(this.eventTobeRecord, 'action')
-  }
+    this.baseInfo.sdkVersion = sdkVersion
+    this.baseInfo.userId = typeof this.baseInfo.userId === 'function' ? this.baseInfo.userId() : this.baseInfo.userId
 
-  captureEvents<T>(MouseEventList: string[], targetKey: string, data?: T) {
-    MouseEventList.forEach(event => {
-      window.addEventListener(event, () => {
-        this.events.push({
-          type: event,
-          pageUrl: this.pageUrl,
-          data: {
-            targetKey,
-            ...data
-          }
-        })
-      })
+    this.eventsTobeRecord.forEach(event => {
+      switch (event) {
+        case 'action_click':
+          window.addEventListener('click', (e) => { this.captureClick(e) })
+          break
+        case 'action_scroll':
+          window.addEventListener('scroll', debounce(this.captureScroll(), 200))
+          break
+        case 'action_route':
+          // TODO
+          break
+        case 'error':
+          // TODO
+          break
+        case 'performance':
+          // TODO
+          break
+        case 'request':
+          // TODO
+          break
+        default:
+          break
+      }
     })
   }
   // https://developer.chrome.com/docs/web-platform/page-lifecycle-api#developer-recommendations-for-each-state
@@ -135,16 +81,17 @@ export default class FufuTracker {
   listenPage() {
     window?.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        this.endTime = new Date().getTime()
         this.send()
       } else {
-        this.startTime = new Date().getTime()
+        this.baseInfo.startTime = new Date().getTime()
+        this.timer = window.setInterval(() => {
+          this.send()
+        }, 1000)
       }
     })
 
     // 页面关闭，页面刷新，页面跳转，切换，'beforeunload' ,'hashchange' , 或者时间到了，都会触发这个事件。时间的话...大概是每一次send之后会重置一个东西，到达阈值就会自动发一下。
     window?.addEventListener('beforeunload', () => {
-      this.endTime = new Date().getTime()
       this.send()
     })
   }
@@ -157,11 +104,78 @@ export default class FufuTracker {
   }
 
   send() {
+    this.baseInfo.endTime = new Date().getTime()
     const data = {
       baseInfo: this.baseInfo,
       events: this.events,
     }
     const blob = this.json2Blob(data)
-    navigator.sendBeacon(this.baseInfo.baseUrl, blob)
+    navigator.sendBeacon(this.baseInfo.reportUrl, blob)
+    this.events = []
+    this.timer && window.clearInterval(this.timer)
+  }
+
+
+  /**
+   * below are the tracker functions
+   */
+
+  captureClick(e: MouseEvent) {
+    this.events.push({
+      type: 'action_click',
+      time: new Date().getTime(),
+      pageUrl: window.location.href,
+      data: {
+        targetKey: e?.target,
+        x: e.clientX,
+        y: e.clientY,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }
+    })
+  }
+
+
+  captureScroll() {
+    const scroll = {
+      lastScrollTop: 0,
+      lastScrollTime: new Date().getTime(),
+      scrollTop: document.documentElement.scrollTop,
+      scrollTime: new Date().getTime(),
+    }
+    let that = this
+    return function () {
+      scroll.scrollTop = document.documentElement.scrollTop
+      scroll.scrollTime = new Date().getTime()
+      if (scroll.scrollTime - scroll.lastScrollTime > 20000) {
+        scroll.lastScrollTime = scroll.scrollTime
+      }
+      that.events.push({
+        type: 'action_scroll',
+        time: new Date().getTime(),
+        pageUrl: window.location.href,
+        data: {
+          scrollTop: scroll.scrollTop,
+          distance: scroll.scrollTop - scroll.lastScrollTop,
+          time: scroll.scrollTime - scroll.lastScrollTime,
+        }
+      })
+      scroll.lastScrollTop = scroll.scrollTop
+    }
+  }
+
+}
+
+/**
+ * helpers
+ * 
+ */
+function debounce(fn: Function, delay: number) {
+  let timer: number
+  return function (this: any, ...args: any[]) {
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      fn.apply(this, args)
+    }, delay)
   }
 }
