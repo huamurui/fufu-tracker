@@ -18,6 +18,11 @@ export default [
         format: "cjs"
       },
       {
+        file: path.resolve(dirname, './lib/index.umd.js'),
+        format: "umd",
+        name: "FufuTracker"
+      },
+      {
         input: "./src/index.ts",
         file: path.resolve(dirname, './lib/index.js'),
         format: "umd",

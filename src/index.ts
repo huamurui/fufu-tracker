@@ -1,4 +1,4 @@
-const sdkVersion: string = '0.0.2'
+const sdkVersion: string = '0.0.4'
 
 type EventType = 'action_click' | 'action_scroll' | 'action_route' | 'error' | 'performance' | 'request'
 
