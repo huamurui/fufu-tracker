@@ -1,6 +1,5 @@
 import ts from 'rollup-plugin-typescript2'
 import path from 'path'
-import dts from 'rollup-plugin-dts'
 import { fileURLToPath } from 'url'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -32,13 +31,5 @@ export default [
     plugins: [
       ts(),
     ]
-  },
-  {
-    input: "./src/index.ts",
-    output: {
-      file: path.resolve(dirname, './lib/index.d.ts'),
-      format: "es",
-    },
-    plugins: [dts()]
   }
 ]
