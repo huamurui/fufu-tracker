@@ -1,58 +1,61 @@
-const sdkVersion: string = '0.0.4'
+const sdk_version: string = '0.0.5'
 
-type EventType = 'action_click' | 'action_scroll' | 'action_route' | 'error' | 'performance' | 'request'
+type EventType = 'user_action' | 'request' | 'error' | 'performance'
 
 interface BaseConfig {
-  appId: string
-  reportUrl: string
-  eventsTobeRecord: EventType[]
-  userId?: string | (() => string)
-  stayTime?: number
+  app_id: string
+  report_url: string
+  events_tobe_record: EventType[]
+
+  patch_id?: string
+  user_id?: string | (() => string)
+  
+  device?: string
+
+  // ip?: string
+  // location?: string
+
+  // stayTime?: number
 }
 
 interface EventData {
   type?: EventType
-  time?: Date | number
-  device?: string
-  userId?: string
-  pageUrl?: string
-  requestUrl?: string
+  action?: 'click' | 'scroll'
+  time_stamp?: Date | number
+  page_url?: string
   extra?: Record<string, unknown>
   data?: Record<string, unknown>
 }
 
 export default class FufuTracker {
   private baseInfo: BaseConfig & {
-    startTime?: number
-    endTime?: number
-    sdkVersion?: string
+    sdk_version?: string
   }
-  private eventsTobeRecord: EventType[] = []
+  private events_tobe_record: EventType[] = []
   private events: EventData[] = []
-  private timer: number | null = null
 
   constructor(config: BaseConfig) {
-    this.baseInfo = config
-    this.eventsTobeRecord = config.eventsTobeRecord
-    this.baseInfo.startTime = new Date().getTime()
+    this.events_tobe_record = config.events_tobe_record
+    this.baseInfo = {
+      ...config,
+      user_id: config.user_id || 'anonymous',
+      device: window.navigator.userAgent,    
+      patch_id: uuid(),
+    }
+
     this.installConfig()
     this.listenPage()
   }
 
   installConfig() {
-    this.baseInfo.sdkVersion = sdkVersion
-    this.baseInfo.userId = typeof this.baseInfo.userId === 'function' ? this.baseInfo.userId() : this.baseInfo.userId
+    this.baseInfo.sdk_version = sdk_version
+    this.baseInfo.user_id = typeof this.baseInfo.user_id === 'function' ? this.baseInfo.user_id() : this.baseInfo.user_id
 
-    this.eventsTobeRecord.forEach(event => {
+    this.events_tobe_record.forEach(event => {
       switch (event) {
-        case 'action_click':
+        case 'user_action':
           window.addEventListener('click', (e) => { this.captureClick(e) })
-          break
-        case 'action_scroll':
           window.addEventListener('scroll', debounce(this.captureScroll(), 200))
-          break
-        case 'action_route':
-          // TODO
           break
         case 'error':
           // TODO
@@ -73,10 +76,7 @@ export default class FufuTracker {
   listenPage() {
     window.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        this.baseInfo.stayTime = new Date().getTime() - (this.baseInfo.startTime as number)
         this.send()
-      } else {
-        this.baseInfo.startTime = new Date().getTime()
       }
     })
 
@@ -102,13 +102,12 @@ export default class FufuTracker {
   }
 
   send() {
-    this.baseInfo.endTime = new Date().getTime()
     const data = {
       baseInfo: this.baseInfo,
       events: this.events,
     }
     const blob = this.json2Blob(data)
-    navigator.sendBeacon(this.baseInfo.reportUrl, blob)
+    navigator.sendBeacon(this.baseInfo.report_url, blob)
     this.events = []
   }
 
@@ -119,9 +118,10 @@ export default class FufuTracker {
   captureClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
     this.events.push({
-      type: 'action_click',
-      time: new Date().getTime(),
-      pageUrl: window.location.href,
+      type: 'user_action',
+      action: 'click',
+      time_stamp: new Date().getTime(),
+      page_url: window.location.href,
       data: {
         // dom 以及 react dom 的结构存在循环引用...，只存一下 id 什么的吧
         target: target?.id || target?.className || target?.tagName || 'null',
@@ -148,11 +148,12 @@ export default class FufuTracker {
         scroll.lastScrollTime = scroll.scrollTime
       }
       that.events.push({
-        type: 'action_scroll',
-        time: new Date().getTime(),
-        pageUrl: window.location.href,
+        type: 'user_action',
+        action: 'scroll',
+        time_stamp: new Date().getTime(),
+        page_url: window.location.href,
         data: {
-          scrollTop: scroll.scrollTop,
+          scroll_top: scroll.scrollTop,
           distance: scroll.scrollTop - scroll.lastScrollTop,
           time: scroll.scrollTime - scroll.lastScrollTime,
         }
@@ -176,4 +177,12 @@ function debounce(fn: Function, delay: number) {
       fn.apply(this, args)
     }, delay)
   }
+}
+
+function uuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
 }
