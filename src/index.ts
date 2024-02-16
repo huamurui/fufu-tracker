@@ -1,4 +1,4 @@
-const sdk_version: string = '0.0.5'
+const sdk_version: string = '0.0.6'
 
 type EventType = 'user_action' | 'request' | 'error' | 'performance'
 
@@ -11,7 +11,7 @@ interface BaseConfig {
   user_id?: string | (() => string)
   
   device?: string
-
+  [key: string]: unknown
   // ip?: string
   // location?: string
 

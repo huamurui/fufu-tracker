@@ -1,4 +1,4 @@
-# fufu-tracker
+# fufu-tracker [![npm](https://img.shields.io/npm/v/fufu-tracker.svg)](https://www.npmjs.com/package/fufu-tracker) [![build status](https://github.com/huamurui/fufu-tracker/actions/workflows/npm-publish.yml/badge.svg?branch=main)](https://github.com/huamurui/fufu-tracker/actions/workflows/npm-publish.yml)
 
 ## Description
 
@@ -17,11 +17,11 @@ import FufuTracker from "fufu-tracker"
 
 const tr = new FufuTracker({
   // required, your application unique key
-  appId: "ko no fufu da", 
+  app_id: "ko no fufu da", 
   // required, your report url
-  reportUrl: "http://localhost:3000/report", 
+  report_url: "http://localhost:3000/report", 
   // optional, default is all events
-  eventsTobeRecord: ["action_click", "action_scroll"],
+  events_tobe_record: ["action_click", "action_scroll"],
 })
 
 // pushEvent for custom record
@@ -61,38 +61,30 @@ the data contains:
 
 ```typescript
 
-interface BaseInfo {
-  // app unique key
-  appId: string 
-  // sdk version (auto filled)
-  sdkVersion: string 
-  // track start time (auto filled)
-  startTime: number
-  // track end time (auto filled)
-  endTime: number
-  // track duration (auto filled)
-  duration?: number
-}
-
-interface Event {
-  // event type
-  type: string
-  // event target
-  target: string
-  // event action
-  action: string
-  // event time
-  time: number
-  // event page url
-  pageUrl?: string
-  // event extra data, depends on event type
-  data?: any
-}
-
 interface Data  {
   // base info
   baseInfo: BaseInfo
   // events
   events: Event[]
+}
+
+interface BaseInfo {
+  // app unique key
+  app_id: string 
+  // sdk version (auto filled)
+  sdk_version: string 
+}
+
+interface Event {
+  // event type
+  type: string
+  // event action
+  action: string
+  // event time
+  time_stamp: number
+  // event page url
+  page_url?: string
+  // event extra data, depends on event type
+  data?: any
 }
 ```
